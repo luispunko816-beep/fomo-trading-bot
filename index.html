@@ -1,189 +1,439 @@
-
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>FOMO AI Trading</title>
+
+<title>FOMO AI TRADING</title>
+
 <style>
 body {
-  background: #090d12;
-  color: white;
-  font-family: Arial, sans-serif;
-  text-align: center;
-  padding: 20px;
+  background:#090d12;
+  color:white;
+  font-family:Arial,sans-serif;
+  text-align:center;
+  padding:20px;
 }
-h1 { color: #00ff99; }
-input, button {
-  padding: 14px;
-  margin: 10px 0;
-  width: 90%;
-  box-sizing: border-box;
-  border-radius: 10px;
+
+h1 {
+  color:#00ff99;
 }
-input { background: #17212b; color: white; border: 1px solid #444; }
-button { background: #00ff99; border: 0; font-weight: bold; }
+
+input {
+  width:90%;
+  padding:15px;
+  box-sizing:border-box;
+  background:#17212b;
+  color:white;
+  border:1px solid #444;
+  border-radius:10px;
+  margin:10px;
+}
+
+button {
+  width:90%;
+  padding:15px;
+  margin:10px;
+  border:0;
+  border-radius:10px;
+  background:#00ff99;
+  font-weight:bold;
+}
+
 #result {
-  margin-top: 20px;
-  background: #17212b;
-  padding: 18px;
-  border-radius: 12px;
-  overflow-wrap: anywhere;
+  margin-top:20px;
+  background:#17212b;
+  padding:20px;
+  border-radius:12px;
+  text-align:left;
+  overflow-wrap:anywhere;
 }
-.warning { color: #ff7777; }
-.safe { color: #00ff99; }
+
+.score {
+  text-align:center;
+  font-size:42px;
+  font-weight:bold;
+}
+
+.green {
+  color:#00ff99;
+}
+
+.red {
+  color:#ff5555;
+}
+
+.yellow {
+  color:#ffaa00;
+}
+
+.check {
+  padding:10px;
+  border-bottom:1px solid #333;
+}
 </style>
 </head>
+
 <body>
 
 <h1>FOMO AI TRADING</h1>
-<p>Solana Token Risk Analyzer</p>
 
-<input id="tokenAddress" placeholder="Paste Solana token address">
+<p>Solana Memecoin Analyzer</p>
 
-<button id="analyzeButton">ANALYZE TOKEN</button>
+<input
+  id="tokenAddress"
+  placeholder="Paste Solana Token Address"
+>
 
-<div id="result">Enter a token address to begin</div>
+<button id="analyzeButton">
+ANALYZE TOKEN
+</button>
+
+<div id="result">
+Enter a Solana token address
+</div>
 
 <script>
-const result = document.getElementById("result");
+
 const button = document.getElementById("analyzeButton");
+const result = document.getElementById("result");
 
 async function analyzeToken() {
-  const address = document.getElementById("tokenAddress").value.trim();
+
+  const address =
+    document.getElementById("tokenAddress").value.trim();
 
   if (!address) {
-    result.textContent = "Please enter a token address";
+    result.textContent =
+      "Please enter a Solana token address";
     return;
   }
 
   button.disabled = true;
-  button.textContent = "ANALYZING...";
-  result.textContent = "Loading token data...";
+  button.textContent = "SCANNING...";
+
+  result.innerHTML =
+    "<h2>Scanning token...</h2>";
 
   try {
-    const response = await fetch(
+
+    const dexResponse = await fetch(
       "https://api.dexscreener.com/token-pairs/v1/solana/" +
       encodeURIComponent(address)
     );
 
-    if (!response.ok) {
-      throw new Error("API error: " + response.status);
+    if (!dexResponse.ok) {
+      throw new Error(
+        "DexScreener API error " +
+        dexResponse.status
+      );
     }
 
-    const pairs = await response.json();
+    const pairs = await dexResponse.json();
 
     if (!Array.isArray(pairs) || pairs.length === 0) {
-      throw new Error("No trading pairs found");
+      throw new Error(
+        "No Solana trading pair found"
+      );
     }
 
     const pair = pairs
-      .filter(p => p.baseToken?.address === address)
-      .sort((a, b) =>
+      .filter(p =>
+        p.baseToken &&
+        p.baseToken.address === address
+      )
+      .sort((a,b) =>
         Number(b.liquidity?.usd || 0) -
         Number(a.liquidity?.usd || 0)
       )[0];
 
-    if (!pair) throw new Error("Token not found");
-
-    const liquidity = Number(pair.liquidity?.usd || 0);
-    const volume = Number(pair.volume?.h24 || 0);
-    const change = Number(pair.priceChange?.h24 || 0);
-    const fdv = Number(pair.fdv || 0);
-
-    const age = pair.pairCreatedAt
-      ? (Date.now() - pair.pairCreatedAt) / 3600000
-      : null;
-
-    let risk = 0;
-    const warnings = [];
-
-    if (liquidity < 5000) {
-      risk += 35;
-      warnings.push("Very low liquidity");
-    } else if (liquidity < 15000) {
-      risk += 15;
-      warnings.push("Low liquidity");
+    if (!pair) {
+      throw new Error("Token not found");
     }
 
-    if (volume < 1000) {
-      risk += 15;
-      warnings.push("Very low 24h volume");
-    }
+    result.innerHTML =
+      "<h2>Running RugCheck...</h2>";
 
-    if (age !== null && age < 24) {
-      risk += 20;
-      warnings.push("Very new trading pair");
-    }
-
-    if (change < -50) {
-      risk += 25;
-      warnings.push("Large 24h price drop");
-    }
-
-    if (fdv > 0 && liquidity / fdv < 0.01) {
-      risk += 15;
-      warnings.push("Liquidity is very small compared to FDV");
-    }
-
-    risk = Math.min(risk, 100);
-
-    let rating = "LOW MARKET RISK";
-    if (risk >= 60) {
-      rating = "HIGH MARKET RISK";
-    } else if (risk >= 30) {
-      rating = "MEDIUM MARKET RISK";
-    }
-
-    result.replaceChildren();
-
-    function add(tag, text, className) {
-      const el = document.createElement(tag);
-      el.textContent = text;
-      if (className) el.className = className;
-      result.appendChild(el);
-    }
-
-    add("h2", pair.baseToken.name || "Unknown token");
-    add("h3", pair.baseToken.symbol || "");
-    add("p", "Price: $" + (pair.priceUsd || "N/A"));
-    add("p", "Liquidity: $" + liquidity.toLocaleString());
-    add("p", "24h Volume: $" + volume.toLocaleString());
-    add("p", "24h Change: " + change + "%");
-    add("p", "Market Cap: $" + Number(pair.marketCap || 0).toLocaleString());
-
-    add("h2", "RUG PULL RISK CHECK");
-    add("h1", risk + "/100");
-    add("h2", rating, risk >= 60 ? "warning" : "safe");
-
-    add("h3", "Warnings");
-
-    if (warnings.length) {
-      warnings.forEach(w => add("p", "⚠ " + w, "warning"));
-    } else {
-      add("p", "No major market-data warning found", "safe");
-    }
-
-    add("p",
-      "Important: This score uses market data only. It cannot confirm or rule out a rug pull. Owner permissions, token authorities, holder concentration and liquidity lock were not checked."
+    const rugResponse = await fetch(
+      "https://api.rugcheck.xyz/v1/tokens/" +
+      encodeURIComponent(address) +
+      "/report/summary"
     );
 
-    const link = document.createElement("a");
-    link.href = pair.url;
-    link.target = "_blank";
-    link.rel = "noopener";
-    link.textContent = "View on DexScreener";
+    if (!rugResponse.ok) {
+      throw new Error(
+        "RugCheck API error " +
+        rugResponse.status
+      );
+    }
+
+    const rug = await rugResponse.json();
+
+    let score = 0;
+    let warnings = [];
+
+    /*
+      RugCheck can return different fields depending
+      on the current API response.
+    */
+
+    if (
+      rug.risks &&
+      Array.isArray(rug.risks)
+    ) {
+
+      for (const risk of rug.risks) {
+
+        if (
+          risk.level === "danger"
+        ) {
+          score += 25;
+          warnings.push(
+            risk.name ||
+            risk.description ||
+            "High risk detected"
+          );
+        }
+
+        else if (
+          risk.level === "warn"
+        ) {
+          score += 10;
+          warnings.push(
+            risk.name ||
+            risk.description ||
+            "Warning detected"
+          );
+        }
+      }
+    }
+
+    score = Math.min(score,100);
+
+    let verdict =
+      "LOW RISK";
+
+    let verdictClass =
+      "green";
+
+    if (score >= 60) {
+
+      verdict =
+        "HIGH RISK";
+
+      verdictClass =
+        "red";
+
+    } else if (score >= 30) {
+
+      verdict =
+        "MEDIUM RISK";
+
+      verdictClass =
+        "yellow";
+    }
+
+    const liquidity =
+      Number(
+        pair.liquidity?.usd || 0
+      );
+
+    const volume =
+      Number(
+        pair.volume?.h24 || 0
+      );
+
+    const change =
+      Number(
+        pair.priceChange?.h24 || 0
+      );
+
+    result.innerHTML = "";
+
+    const title =
+      document.createElement("h2");
+
+    title.textContent =
+      pair.baseToken?.name ||
+      "Unknown Token";
+
+    result.appendChild(title);
+
+    const symbol =
+      document.createElement("h3");
+
+    symbol.textContent =
+      pair.baseToken?.symbol ||
+      "";
+
+    result.appendChild(symbol);
+
+    const price =
+      document.createElement("p");
+
+    price.textContent =
+      "Price: $" +
+      (pair.priceUsd || "N/A");
+
+    result.appendChild(price);
+
+    const liq =
+      document.createElement("p");
+
+    liq.textContent =
+      "Liquidity: $" +
+      liquidity.toLocaleString();
+
+    result.appendChild(liq);
+
+    const vol =
+      document.createElement("p");
+
+    vol.textContent =
+      "24h Volume: $" +
+      volume.toLocaleString();
+
+    result.appendChild(vol);
+
+    const ch =
+      document.createElement("p");
+
+    ch.textContent =
+      "24h Change: " +
+      change +
+      "%";
+
+    result.appendChild(ch);
+
+    const heading =
+      document.createElement("h2");
+
+    heading.textContent =
+      "RUG PULL RISK";
+
+    result.appendChild(heading);
+
+    const scoreElement =
+      document.createElement("div");
+
+    scoreElement.className =
+      "score " +
+      verdictClass;
+
+    scoreElement.textContent =
+      score + "/100";
+
+    result.appendChild(scoreElement);
+
+    const verdictElement =
+      document.createElement("h2");
+
+    verdictElement.className =
+      verdictClass;
+
+    verdictElement.style.textAlign =
+      "center";
+
+    verdictElement.textContent =
+      verdict;
+
+    result.appendChild(
+      verdictElement
+    );
+
+    const warningHeading =
+      document.createElement("h3");
+
+    warningHeading.textContent =
+      "Detected Risks";
+
+    result.appendChild(
+      warningHeading
+    );
+
+    if (warnings.length === 0) {
+
+      const safe =
+        document.createElement("p");
+
+      safe.className =
+        "green";
+
+      safe.textContent =
+        "No major RugCheck warnings returned";
+
+      result.appendChild(safe);
+
+    } else {
+
+      warnings.forEach(warning => {
+
+        const item =
+          document.createElement("div");
+
+        item.className =
+          "check red";
+
+        item.textContent =
+          "⚠ " + warning;
+
+        result.appendChild(item);
+
+      });
+    }
+
+    const info =
+      document.createElement("p");
+
+    info.innerHTML =
+      "<br>Important: This is an automated risk analysis. A 0/100 score does NOT prove that a token is safe.";
+
+    result.appendChild(info);
+
+    const link =
+      document.createElement("a");
+
+    link.href =
+      pair.url;
+
+    link.target =
+      "_blank";
+
+    link.rel =
+      "noopener";
+
+    link.textContent =
+      "View on DexScreener";
+
     result.appendChild(link);
 
-  } catch (error) {
-    result.textContent = "Analysis Error: " + error.message;
-  } finally {
+  }
+
+  catch (error) {
+
+    console.error(error);
+
+    result.innerHTML =
+      "<h2>Scanner Error</h2>" +
+      "<p>" +
+      error.message +
+      "</p>";
+  }
+
+  finally {
+
     button.disabled = false;
-    button.textContent = "ANALYZE TOKEN";
+
+    button.textContent =
+      "ANALYZE TOKEN";
   }
 }
 
-button.addEventListener("click", analyzeToken);
+button.addEventListener(
+  "click",
+  analyzeToken
+);
+
 </script>
 
 </body>
